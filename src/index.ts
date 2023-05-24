@@ -8,8 +8,9 @@ import cors from 'cors';
 global.fetch = fetch;
 
 let redisClient;
+
 (async () => {
-  redisClient = redis.createClient();
+  redisClient = redis.createClient({ url: process.env.REDIS_DB });
 
   redisClient.on('error', (error) =>
     console.error(`Error : ${error}`)
@@ -42,6 +43,6 @@ app.get('/:chain', async (req: Request, res: Response) => {
   }
 });
 
-app.listen('3001', () => {
+app.listen('3000', () => {
   console.log('Running');
 });
