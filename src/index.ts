@@ -33,7 +33,7 @@ app.get('/:chain', async (req: Request, res: Response) => {
       results = JSON.parse(cacheResults);
     } else {
       results = await fetchChain({ chain: [chain] });
-      await redisClient.set(chain, JSON.stringify(results));
+      await redisClient.setEx(chain, 14400, JSON.stringify(results));
     }
     res.send({
       data: results,
