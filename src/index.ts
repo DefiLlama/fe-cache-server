@@ -26,14 +26,19 @@ app.use(cors());
 app.get('/:chain', async (req: Request, res: Response) => {
   try {
     const chain = req.params.chain;
+    const redisChain = chain + '_redis';
     let results;
 
-    const cacheResults = await redisClient.get(chain);
+    const cacheResults = await redisClient.get(redisChain);
     if (cacheResults) {
       results = JSON.parse(cacheResults);
     } else {
       results = await fetchChain({ chain: [chain] });
-      await redisClient.setEx(chain, 14400, JSON.stringify(results));
+      await redisClient.setEx(
+        redisChain,
+        14400,
+        JSON.stringify(results)
+      );
     }
     res.send({
       data: results,
@@ -44,6 +49,5 @@ app.get('/:chain', async (req: Request, res: Response) => {
 });
 
 app.listen('3000', () => {
-  
   console.log('Running');
 });
