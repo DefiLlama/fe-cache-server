@@ -54,18 +54,16 @@ app.get('/chart/:geckoId', async (req: Request, res: Response) => {
 
     let results;
 
-    const cacheResults = await redisClient.get(geckoId + '_chart');
+    const cacheResults = await redisClient.get(geckoId);
     if (cacheResults) {
       results = JSON.parse(cacheResults);
     } else {
       results = await fetch(
         `https://api.coingecko.com/api/v3/coins/${geckoId}/market_chart?vs_currency=usd&days=365`
       ).then((r) => r.json());
-      await redisClient.setEx(
-        geckoId + '_chart',
-        14400,
-        JSON.stringify(results)
-      );
+      await redisClient.set(geckoId, JSON.stringify(results), {
+        EX: 14400,
+      });
     }
     res.send({
       data: results,
@@ -75,6 +73,27 @@ app.get('/chart/:geckoId', async (req: Request, res: Response) => {
   }
 });
 
+app.get(
+  '/chart/update/:geckoId',
+  async (req: Request, res: Response) => {
+    try {
+      const geckoId = req.params.geckoId;
+
+      let results = await fetch(
+        `https://api.coingecko.com/api/v3/coins/${geckoId}/market_chart?vs_currency=usd&days=365`
+      ).then((r) => r.json());
+      await redisClient.set(geckoId, JSON.stringify(results), {
+        EX: 14400,
+      });
+      res.send({
+        status: 'updated',
+        data: results,
+      });
+    } catch (e) {
+      res.send(null);
+    }
+  }
+);
 app.listen('3000', () => {
   console.log('Running');
 });
