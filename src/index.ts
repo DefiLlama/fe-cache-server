@@ -58,7 +58,7 @@ app.get('/chart/:geckoId', async (req: Request, res: Response) => {
     if (cacheResults) {
       results = JSON.parse(cacheResults);
     } else {
-      results = fetch(
+      results = await fetch(
         `https://api.coingecko.com/api/v3/coins/${geckoId}/market_chart?vs_currency=usd&days=365`
       ).then((r) => r.json());
       await redisClient.setEx(
