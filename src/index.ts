@@ -48,7 +48,7 @@ app.get('/:chain', async (req: Request, res: Response) => {
   }
 });
 
-app.get('/chart/:geckoId', async (req: Request, res: Response) => {
+app.get('/cgchart/:geckoId', async (req: Request, res: Response) => {
   try {
     const geckoId = req.params.geckoId;
 
@@ -74,7 +74,7 @@ app.get('/chart/:geckoId', async (req: Request, res: Response) => {
 });
 
 app.get(
-  '/chart/update/:geckoId',
+  '/cgchart/update/:geckoId',
   async (req: Request, res: Response) => {
     try {
       const geckoId = req.params.geckoId;
