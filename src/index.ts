@@ -48,7 +48,7 @@ app.get('/:chain', async (req: Request, res: Response) => {
   }
 });
 
-app.get('/chart/:geckoId', async (req: Request, res: Response) => {
+app.get('/cgchart/:geckoId', async (req: Request, res: Response) => {
   try {
     const geckoId = req.params.geckoId;
 
@@ -73,27 +73,6 @@ app.get('/chart/:geckoId', async (req: Request, res: Response) => {
   }
 });
 
-app.get(
-  '/chart/update/:geckoId',
-  async (req: Request, res: Response) => {
-    try {
-      const geckoId = req.params.geckoId;
-
-      let results = await fetch(
-        `https://api.coingecko.com/api/v3/coins/${geckoId}/market_chart?vs_currency=usd&days=365`
-      ).then((r) => r.json());
-      await redisClient.set(geckoId, JSON.stringify(results), {
-        EX: 14400,
-      });
-      res.send({
-        status: 'updated',
-        data: results,
-      });
-    } catch (e) {
-      res.send(null);
-    }
-  }
-);
 app.listen('3000', () => {
   console.log('Running');
 });
