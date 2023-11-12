@@ -12,7 +12,7 @@ global.fetch = fetch
 
 let redisClient
 ;(async () => {
-    redisClient = redis.createClient()
+    redisClient = redis.createClient({ url: process.env.REDIS_DB })
 
     redisClient.on('error', (error) => console.error(`Error : ${error}`))
 
