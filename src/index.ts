@@ -95,7 +95,7 @@ app.get('/protocol/:protocol', async (req: Request, res: Response) => {
 
         const cacheResults = await redisClient.get(redisKey)
         if (cacheResults) {
-            results = cacheResults
+            results = JSON.parse(cacheResults)
         } else {
             results = (await getProtocolData(protocol))?.props
             await redisClient.set(redisKey, JSON.stringify(results), {
