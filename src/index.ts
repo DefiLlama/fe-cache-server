@@ -118,6 +118,6 @@ app.get('/protocol/:protocol', async (req: Request, res: Response) => {
     }
 })
 
-app.listen('3001', () => {
+app.listen('3000', () => {
     console.log('Running')
 })
