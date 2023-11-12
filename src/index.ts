@@ -6,6 +6,7 @@ import * as redis from 'redis'
 import cors from 'cors'
 import { getProtocolData } from '../frontend/src/api/categories/protocols/getProtocolData'
 import { chartExist } from './utils'
+import { sluggify } from '~/utils/cache-client'
 
 global.fetch = fetch
 
@@ -89,7 +90,7 @@ app.get('/cgchart/update/:geckoId', async (req: Request, res: Response) => {
 
 app.get('/protocol/:protocol', async (req: Request, res: Response) => {
     try {
-        const protocol = req.params.protocol
+        const protocol = sluggify(req.params.protocol)
         const redisKey = 'protocol_data_' + protocol.toLowerCase()
         let results
 
@@ -102,6 +103,7 @@ app.get('/protocol/:protocol', async (req: Request, res: Response) => {
                 EX: 14400,
             })
         }
+
         const availableCharts = Object.fromEntries(
             Object.entries(chartExist).map(([key, func]) => [
                 key,
