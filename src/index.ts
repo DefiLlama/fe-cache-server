@@ -1,4 +1,6 @@
 import express, { Express, Request, Response } from 'express'
+import dayjs from 'dayjs'
+
 import { fetchChain } from '../frontend/src/components/ComparePage/chainFetcher'
 import 'module-alias/register'
 import fetch from 'node-fetch'
@@ -7,6 +9,7 @@ import cors from 'cors'
 import { getProtocolData } from '../frontend/src/api/categories/protocols/getProtocolData'
 import { chartExist } from './utils'
 import { sluggify } from '~/utils/cache-client'
+import { fetchChartData } from './fetchChart'
 
 global.fetch = fetch
 
@@ -47,25 +50,28 @@ app.get('/:chain', async (req: Request, res: Response) => {
 app.get('/cgchart/:geckoId', async (req: Request, res: Response) => {
     try {
         const geckoId = req.params.geckoId
+        const unixTimestampStartOfOneYearAgo = dayjs()
+            .subtract(1, 'year')
+            .startOf('day')
+            .unix()
 
-        let results
+        let cachedResults = await redisClient.get(geckoId)
+        let results = cachedResults ? JSON.parse(cachedResults) : null
 
-        const cacheResults = await redisClient.get(geckoId)
-        if (cacheResults && cacheResults?.prices) {
-            results = JSON.parse(cacheResults)
-        } else {
-            results = await fetch(
-                `https://api.coingecko.com/api/v3/coins/${geckoId}/market_chart?vs_currency=usd&days=365`
-            ).then((r) => r.json())
-            if (results?.prices) {
+        if (!results || !results.prices) {
+            results = await fetchChartData(
+                geckoId,
+                unixTimestampStartOfOneYearAgo
+            )
+
+            if (results && results.prices) {
                 await redisClient.set(geckoId, JSON.stringify(results), {
                     EX: 14400,
                 })
             }
         }
-        res.send({
-            data: results,
-        })
+
+        res.send({ data: results || {} })
     } catch (e) {
         res.send(null)
     }
@@ -120,6 +126,6 @@ app.get('/protocol/:protocol', async (req: Request, res: Response) => {
     }
 })
 
-app.listen('3000', () => {
+app.listen('3001', () => {
     console.log('Running')
 })
