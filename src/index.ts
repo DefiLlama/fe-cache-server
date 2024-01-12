@@ -59,15 +59,21 @@ app.get('/cgchart/:geckoId', async (req: Request, res: Response) => {
         let results = cachedResults ? JSON.parse(cachedResults) : null
 
         if (!results || !results.prices) {
-            results = await fetchChartData(
-                geckoId,
-                unixTimestampStartOfOneYearAgo
-            )
+            try {
+                results = await fetchChartData(
+                    geckoId,
+                    unixTimestampStartOfOneYearAgo
+                )
 
-            if (results && results.prices) {
-                await redisClient.set(geckoId, JSON.stringify(results), {
-                    EX: 14400,
-                })
+                if (results && results.prices) {
+                    await redisClient.set(geckoId, JSON.stringify(results), {
+                        EX: 14400,
+                    })
+                }
+            } catch (e) {
+                res.send({ error: e?.message })
+
+                return
             }
         }
 
