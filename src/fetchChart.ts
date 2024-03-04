@@ -6,6 +6,7 @@ async function fetchChartData(geckoId, unixTimestamp) {
 
     response = await fetch(geckoUrl).then((r) => r.json())
     chart = response?.prices
+    const cgChart = response
 
     if (!chart) {
         response = await fetch(llamaUrl).then((r) => r.json())
@@ -14,7 +15,7 @@ async function fetchChartData(geckoId, unixTimestamp) {
         )
     }
 
-    return chart ? { prices: chart } : null
+    return chart ? { prices: chart, cgChart } : null
 }
 
 export { fetchChartData }
