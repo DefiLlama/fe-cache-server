@@ -1,6 +1,13 @@
-async function fetchChartData(geckoId, unixTimestamp) {
-    const llamaUrl = `https://coins.llama.fi/chart/coingecko:${geckoId}w?start=${unixTimestamp}&span=365`
-    const geckoUrl = `https://api.coingecko.com/api/v3/coins/${geckoId}/market_chart?vs_currency=usd&days=365`
+const LLAMA_API = 'https://coins.llama.fi/chart'
+const CG_API = 'https://api.coingecko.com/api/v3/coins'
+
+async function fetchChartData(geckoId, unixTimestamp, fullChart = false) {
+    const llamaUrl = `${LLAMA_API}/coingecko:${geckoId}?start=${unixTimestamp}&span=${
+        fullChart ? '1000' : '365'
+    }`
+    const geckoUrl = `${CG_API}/${geckoId}/market_chart?vs_currency=usd&days=${
+        fullChart ? 'max' : '365'
+    }`
     let response,
         chart = null
 

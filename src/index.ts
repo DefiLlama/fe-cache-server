@@ -50,6 +50,7 @@ app.get('/:chain', async (req: Request, res: Response) => {
 app.get('/cgchart/:geckoId', async (req: Request, res: Response) => {
     try {
         const geckoId = req.params.geckoId
+        const fullChart = req.query.fullChart === 'true'
         const unixTimestampStartOfOneYearAgo = dayjs()
             .subtract(1, 'year')
             .startOf('day')
@@ -62,7 +63,8 @@ app.get('/cgchart/:geckoId', async (req: Request, res: Response) => {
             try {
                 results = await fetchChartData(
                     geckoId,
-                    unixTimestampStartOfOneYearAgo
+                    unixTimestampStartOfOneYearAgo,
+                    fullChart
                 )
 
                 if (results && results.prices) {
