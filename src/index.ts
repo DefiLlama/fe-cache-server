@@ -51,12 +51,14 @@ app.get('/cgchart/:geckoId', async (req: Request, res: Response) => {
     try {
         const geckoId = req.params.geckoId
         const fullChart = req.query.fullChart === 'true'
+        const storageKey = 'cgchart_' + geckoId + (fullChart ? '_full' : '')
+
         const unixTimestampStartOfOneYearAgo = dayjs()
             .subtract(1, 'year')
             .startOf('day')
             .unix()
 
-        let cachedResults = await redisClient.get(geckoId)
+        let cachedResults = await redisClient.get(storageKey)
         let results = cachedResults ? JSON.parse(cachedResults) : null
 
         if (!results || !results.prices) {
@@ -68,7 +70,7 @@ app.get('/cgchart/:geckoId', async (req: Request, res: Response) => {
                 )
 
                 if (results && results.prices) {
-                    await redisClient.set(geckoId, JSON.stringify(results), {
+                    await redisClient.set(storageKey, JSON.stringify(results), {
                         EX: 14400,
                     })
                 }
@@ -80,25 +82,6 @@ app.get('/cgchart/:geckoId', async (req: Request, res: Response) => {
         }
 
         res.send({ data: results || {} })
-    } catch (e) {
-        res.send(null)
-    }
-})
-
-app.get('/cgchart/update/:geckoId', async (req: Request, res: Response) => {
-    try {
-        const geckoId = req.params.geckoId
-
-        let results = await fetch(
-            `https://api.coingecko.com/api/v3/coins/${geckoId}/market_chart?vs_currency=usd&days=365`
-        ).then((r) => r.json())
-        await redisClient.set(geckoId, JSON.stringify(results), {
-            EX: 14400,
-        })
-        res.send({
-            status: 'updated',
-            data: results,
-        })
     } catch (e) {
         res.send(null)
     }
