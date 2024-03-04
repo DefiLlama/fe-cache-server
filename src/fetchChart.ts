@@ -15,7 +15,7 @@ async function fetchChartData(geckoId, unixTimestamp) {
         )
     }
 
-    return chart ? { prices: chart, cgChart } : null
+    return chart ? { prices: chart, mcaps: cgChart?.market_caps || null } : null
 }
 
 export { fetchChartData }
