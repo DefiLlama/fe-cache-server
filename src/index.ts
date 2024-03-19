@@ -7,8 +7,7 @@ import fetch from 'node-fetch'
 import * as redis from 'redis'
 import cors from 'cors'
 import { getProtocolData } from '../frontend/src/api/categories/protocols/getProtocolData'
-import { chartExist } from './utils'
-import { sluggify } from '~/utils/cache-client'
+import { chartExist, sluggify } from './utils'
 import { fetchChartData } from './fetchChart'
 
 global.fetch = fetch

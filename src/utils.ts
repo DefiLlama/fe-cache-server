@@ -31,3 +31,10 @@ export const chartExist = {
     borrowed: ({ protocolData }) =>
         !!protocolData?.historicalChainTvls['borrowed']?.tvl?.length,
 }
+
+export const sluggify = (input: string) => {
+    const slug = decodeURIComponent(input)
+        .toLowerCase()
+        .replace(/[^\w\/]+/g, '-')
+    return slug.replace(/^-+/, '').replace(/-+$/, '')
+}
