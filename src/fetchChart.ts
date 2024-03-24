@@ -8,16 +8,16 @@ async function fetchChartData(geckoId, unixTimestamp, fullChart = false) {
     const geckoUrl = `${CG_API}/${geckoId}/market_chart?vs_currency=usd&days=${
         fullChart ? 'max' : '365'
     }&x_cg_pro_api_key=${process.env.CG_KEY}`
-    let response,
-        chart = null
 
-    response = await fetch(geckoUrl).then((r) => r.json())
-    chart = response?.prices
-    const cgChart = response
+    let cgResponse = await fetch(geckoUrl).then((r) => r.json())
+    let chart = cgResponse?.prices
+    const cgChart = cgResponse
+
+    let llamaResponse
 
     if (!chart) {
-        response = await fetch(llamaUrl).then((r) => r.json())
-        chart = response?.coins?.[`coingecko:${geckoId}`]?.prices?.map(
+        llamaResponse = await fetch(llamaUrl).then((r) => r.json())
+        chart = llamaResponse?.coins?.[`coingecko:${geckoId}`]?.prices?.map(
             (price) => [price.timestamp * 1000, price.price]
         )
     }

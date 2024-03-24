@@ -42,7 +42,7 @@ app.get('/:chain', async (req: Request, res: Response) => {
             data: results,
         })
     } catch (e) {
-        res.send(null)
+        res.status(500).send({ error: 'Internal Server Error' })
     }
 })
 
@@ -82,7 +82,7 @@ app.get('/cgchart/:geckoId', async (req: Request, res: Response) => {
 
         res.send({ data: results || {} })
     } catch (e) {
-        res.send(null)
+        res.status(500).send({ error: 'Internal Server Error' })
     }
 })
 
@@ -112,7 +112,7 @@ app.get('/protocol/:protocol', async (req: Request, res: Response) => {
         res.send({ availableCharts, protocol: results })
     } catch (e) {
         console.log(e)
-        res.send(null)
+        res.status(500).send({ error: 'Internal Server Error' })
     }
 })
 
