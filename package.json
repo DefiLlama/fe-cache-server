@@ -9,7 +9,7 @@
 		"build": "yarn rmv && tsc -p ./tsconfig.json && tsc-alias",
 		"dev": "yarn rmv && tsc && (concurrently   \"tsc --watch -p tsconfig.json\")",
 		"start-dev": "nodemon --watch ./src/index.ts  --exec \"rm -rf ./dist && yarn rmv && yarn build && node ./dist/src/index.js\"",
-		"start": "rm -rf ./dist && yarn rmv && yarn build && node ./dist/src/index.js\"",
+		"start": "rm -rf ./dist && yarn rmv && yarn build && node ./dist/src/index.js",
 		"update-submodules": "git submodule update --init --recursive --remote --merge",
 		"rmv": "rm -rf ./frontend/src/components/Cexs ./frontend/src/pages/cex/ && cat ./cexs.ts > ./frontend/src/pages/cexs/index.tsx"
 	},
