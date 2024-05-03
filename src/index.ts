@@ -86,6 +86,30 @@ app.get('/cgchart/:geckoId', async (req: Request, res: Response) => {
     }
 })
 
+app.get('/supply/:geckoId', async (req: Request, res: Response) => {
+    try {
+        const geckoId = req.params.geckoId
+        const redisId = 'supply_'+geckoId
+        let results
+
+        const cacheResults = await redisClient.get(redisId)
+        if (cacheResults) {
+            results = JSON.parse(cacheResults)
+        } else {
+            const data = await fetch(
+                `https://api.coingecko.com/api/v3/coins/${geckoId}?localization=false&tickers=false&market_data=true&community_data=false&developer_data=false&sparkline=false&x_cg_pro_api_key=${process.env.CG_KEY}`
+            ).then((res) => res.json())
+            results = {total_supply: data['market_data']['total_supply']}
+            await redisClient.setEx(redisId, 14400, JSON.stringify(results))
+        }
+        res.send({
+            data: results,
+        })
+    } catch (e) {
+        res.status(500).send({ error: 'Internal Server Error' })
+    }
+})
+
 app.get('/protocol/:protocol', async (req: Request, res: Response) => {
     try {
         const protocol = sluggify(req.params.protocol)
