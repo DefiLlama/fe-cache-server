@@ -97,7 +97,7 @@ app.get('/supply/:geckoId', async (req: Request, res: Response) => {
             results = JSON.parse(cacheResults)
         } else {
             const data = await fetch(
-                `https://api.coingecko.com/api/v3/coins/${geckoId}?localization=false&tickers=false&market_data=true&community_data=false&developer_data=false&sparkline=false&x_cg_pro_api_key=${process.env.CG_KEY}`
+                `https://pro-api.coingecko.com/api/v3/coins/${geckoId}?localization=false&tickers=false&market_data=true&community_data=false&developer_data=false&sparkline=false&x_cg_pro_api_key=${process.env.CG_KEY}`
             ).then((res) => res.json())
             results = {total_supply: data['market_data']['total_supply']}
             await redisClient.setEx(redisId, 14400, JSON.stringify(results))
