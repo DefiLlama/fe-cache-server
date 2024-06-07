@@ -10,6 +10,7 @@ async function fetchChartData(geckoId, unixTimestamp, fullChart = false) {
     }&x_cg_pro_api_key=${process.env.CG_KEY}`
 
     let cgResponse = await fetch(geckoUrl).then((r) => r.json())
+    const cgCoinData = await fetch(`${CG_API}/${geckoId}`).then((r) => r.json())
     let chart = cgResponse?.prices
     const cgChart = cgResponse
 
@@ -27,6 +28,7 @@ async function fetchChartData(geckoId, unixTimestamp, fullChart = false) {
               prices: chart,
               mcaps: cgChart?.market_caps || null,
               volumes: cgChart?.total_volumes || null,
+              coinData: cgCoinData,
           }
         : null
 }
