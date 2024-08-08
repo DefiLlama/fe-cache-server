@@ -27,7 +27,7 @@ app.use(cors())
 
 app.get('/cg_market_data', async (req: Request, res: Response) => {
     try {
-        const redisKey = 'cg_market_data'
+        const redisKey = 'cg_crypto_market_data'
         let results
 
         const cachedResults = await redisClient.get(redisKey)
@@ -43,7 +43,7 @@ app.get('/cg_market_data', async (req: Request, res: Response) => {
 
             results = { ...response.data, ...defiResponse.data }
             await redisClient.set(redisKey, JSON.stringify(results), {
-                EX: 60 * 60,
+                EX: 15 * 60,
             })
         }
 
