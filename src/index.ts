@@ -25,6 +25,36 @@ const app: Express = express()
 
 app.use(cors())
 
+app.get('/cg_market_data', async (req: Request, res: Response) => {
+    try {
+        const redisKey = 'cg_market_data'
+        let results
+
+        const cachedResults = await redisClient.get(redisKey)
+        if (cachedResults) {
+            results = JSON.parse(cachedResults)
+        } else {
+            const response = await fetch(
+                `https://pro-api.coingecko.com/api/v3/global?x_cg_pro_api_key=${process.env.CG_KEY}`
+            )
+            const data = await response.json()
+
+            results = data.data
+            await redisClient.set(redisKey, JSON.stringify(data), {
+                EX: 60 * 60,
+            })
+        }
+
+        res.send({ data: results })
+    } catch (error) {
+        console.error('Error fetching CoinGecko global data:', error)
+        res.status(500).json({
+            error: 'Internal Server Error',
+            message: error.message,
+        })
+    }
+})
+
 app.get('/:chain', async (req: Request, res: Response) => {
     try {
         const chain = req.params.chain
@@ -107,36 +137,6 @@ app.get('/supply/:geckoId', async (req: Request, res: Response) => {
         })
     } catch (e) {
         res.status(500).send({ error: 'Internal Server Error' })
-    }
-})
-
-app.get('/cg_market_data', async (req: Request, res: Response) => {
-    try {
-        const redisKey = 'cg_market_data'
-        let results
-
-        const cachedResults = await redisClient.get(redisKey)
-        if (cachedResults) {
-            results = JSON.parse(cachedResults)
-        } else {
-            const response = await fetch(
-                `https://pro-api.coingecko.com/api/v3/global?x_cg_pro_api_key=${process.env.CG_KEY}`
-            )
-            const data = await response.json()
-
-            results = data.data
-            await redisClient.set(redisKey, JSON.stringify(data), {
-                EX: 60 * 60,
-            })
-        }
-
-        res.send({ data: results })
-    } catch (error) {
-        console.error('Error fetching CoinGecko global data:', error)
-        res.status(500).json({
-            error: 'Internal Server Error',
-            message: error.message,
-        })
     }
 })
 
