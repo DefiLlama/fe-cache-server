@@ -89,7 +89,7 @@ app.get('/cgchart/:geckoId', async (req: Request, res: Response) => {
 app.get('/supply/:geckoId', async (req: Request, res: Response) => {
     try {
         const geckoId = req.params.geckoId
-        const redisId = 'supply_'+geckoId
+        const redisId = 'supply_' + geckoId
         let results
 
         const cacheResults = await redisClient.get(redisId)
@@ -99,7 +99,7 @@ app.get('/supply/:geckoId', async (req: Request, res: Response) => {
             const data = await fetch(
                 `https://pro-api.coingecko.com/api/v3/coins/${geckoId}?localization=false&tickers=false&market_data=true&community_data=false&developer_data=false&sparkline=false&x_cg_pro_api_key=${process.env.CG_KEY}`
             ).then((res) => res.json())
-            results = {total_supply: data['market_data']['total_supply']}
+            results = { total_supply: data['market_data']['total_supply'] }
             await redisClient.setEx(redisId, 14400, JSON.stringify(results))
         }
         res.send({
@@ -107,6 +107,32 @@ app.get('/supply/:geckoId', async (req: Request, res: Response) => {
         })
     } catch (e) {
         res.status(500).send({ error: 'Internal Server Error' })
+    }
+})
+
+app.get('/api/coingecko/global', async (req: Request, res: Response) => {
+    try {
+        const redisKey = 'coingecko_global_data'
+        let results
+
+        const cachedResults = await redisClient.get(redisKey)
+        if (cachedResults) {
+            results = JSON.parse(cachedResults)
+        } else {
+            const response = await fetch(
+                `https://pro-api.coingecko.com/api/v3/global?x_cg_pro_api_key=${process.env.CG_KEY}`
+            )
+            const data = await response.json()
+
+            results = data.data
+
+            await redisClient.setex(redisKey, 60 * 60, JSON.stringify(results))
+        }
+
+        res.send({ data: results })
+    } catch (error) {
+        console.error('Error fetching CoinGecko global data:', error)
+        res.status(500).json({ error: 'Internal Server Error' })
     }
 })
 
