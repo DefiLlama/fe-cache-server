@@ -132,7 +132,10 @@ app.get('/api/coingecko/global', async (req: Request, res: Response) => {
         res.send({ data: results })
     } catch (error) {
         console.error('Error fetching CoinGecko global data:', error)
-        res.status(500).json({ error: 'Internal Server Error' })
+        res.status(500).json({
+            error: 'Internal Server Error',
+            message: error.message,
+        })
     }
 })
 
