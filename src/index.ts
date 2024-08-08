@@ -110,7 +110,7 @@ app.get('/supply/:geckoId', async (req: Request, res: Response) => {
     }
 })
 
-app.get('/api/coingecko/global', async (req: Request, res: Response) => {
+app.get('/market_data', async (req: Request, res: Response) => {
     try {
         const redisKey = 'coingecko_global_data'
         let results
@@ -125,8 +125,9 @@ app.get('/api/coingecko/global', async (req: Request, res: Response) => {
             const data = await response.json()
 
             results = data.data
-
-            await redisClient.setex(redisKey, 60 * 60, JSON.stringify(results))
+            await redisClient.set(redisKey, JSON.stringify(data), {
+                EX: 60 * 60,
+            })
         }
 
         res.send({ data: results })
