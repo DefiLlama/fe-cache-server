@@ -36,11 +36,13 @@ app.get('/cg_market_data', async (req: Request, res: Response) => {
         } else {
             const response = await fetch(
                 `https://pro-api.coingecko.com/api/v3/global?x_cg_pro_api_key=${process.env.CG_KEY}`
-            )
-            const data = await response.json()
+            ).then((res) => res.json())
+            const defiResponse = await fetch(
+                `https://pro-api.coingecko.com/api/v3/global/decentralized_finance_defi?x_cg_pro_api_key=${process.env.CG_KEY}`
+            ).then((res) => res.json())
 
-            results = data.data
-            await redisClient.set(redisKey, JSON.stringify(data), {
+            results = { ...response.data, ...defiResponse.data }
+            await redisClient.set(redisKey, JSON.stringify(results), {
                 EX: 60 * 60,
             })
         }
