@@ -1,5 +1,6 @@
 import express, { Express, Request, Response } from 'express'
 import dayjs from 'dayjs'
+import cron from 'node-cron'
 
 import { fetchChain } from '../frontend/src/components/ComparePage/chainFetcher'
 import 'module-alias/register'
@@ -7,7 +8,7 @@ import fetch from 'node-fetch'
 import * as redis from 'redis'
 import cors from 'cors'
 import { getProtocolData } from '../frontend/src/api/categories/protocols/getProtocolData'
-import { chartExist, sluggify } from './utils'
+import { chartExist, sleep, sluggify } from './utils'
 import { fetchChartData } from './fetchChart'
 
 global.fetch = fetch
@@ -172,6 +173,49 @@ app.get('/protocol/:protocol', async (req: Request, res: Response) => {
     }
 })
 
+async function fetchTop100Tokens() {
+    try {
+        const response = await fetch(
+            `https://pro-api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=100&page=1&sparkline=false&x_cg_pro_api_key=${process.env.CG_KEY}`
+        )
+        const data = await response.json()
+        return data
+    } catch (error) {
+        return null
+    }
+}
+
+async function updateChartCache(geckoId: string) {
+    const fullChart = true
+    const storageKey = 'cgchart_' + geckoId + '_full'
+
+    try {
+        const results = await fetchChartData(geckoId, 0, fullChart)
+        if (results && results.prices) {
+            await redisClient.set(storageKey, JSON.stringify(results), {
+                EX: 14400,
+            })
+        }
+    } catch (error) {}
+}
+
+async function updateTop100TokensChartCache() {
+    try {
+        const tokens = await fetchTop100Tokens()
+        if (tokens) {
+            for (const token of tokens) {
+                await updateChartCache(token.id)
+                await sleep(3000)
+            }
+        }
+    } catch (error) {
+        console.error('Error updating top 100 tokens chart cache:', error)
+    }
+}
+
+cron.schedule('0 */4 * * *', updateTop100TokensChartCache)
+
 app.listen('3000', () => {
     console.log('Running')
+    updateTop100TokensChartCache()
 })

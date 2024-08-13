@@ -38,3 +38,7 @@ export const sluggify = (input: string) => {
         .replace(/[^\w\/]+/g, '-')
     return slug.replace(/^-+/, '').replace(/-+$/, '')
 }
+
+export function sleep(ms: number) {
+    return new Promise((resolve) => setTimeout(resolve, ms))
+}

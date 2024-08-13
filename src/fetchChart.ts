@@ -9,10 +9,13 @@ async function fetchChartData(geckoId, unixTimestamp, fullChart = false) {
         fullChart ? 'max' : '365'
     }&x_cg_pro_api_key=${process.env.CG_KEY}`
 
-    let cgResponse = await fetch(geckoUrl).then((r) => r.json())
-    const cgCoinData = await fetch(
-        `${CG_API}/${geckoId}?x_cg_pro_api_key=${process.env.CG_KEY}`
-    ).then((r) => r.json())
+    let [cgResponse, cgCoinData] = await Promise.all([
+        fetch(geckoUrl).then((r) => r.json()),
+        fetch(
+            `${CG_API}/${geckoId}?x_cg_pro_api_key=${process.env.CG_KEY}`
+        ).then((r) => r.json()),
+    ])
+
     let chart = cgResponse?.prices
     const cgChart = cgResponse
 
