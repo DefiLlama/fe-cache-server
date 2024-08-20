@@ -44,13 +44,42 @@ app.get('/cg_market_data', async (req: Request, res: Response) => {
 
             results = { ...response.data, ...defiResponse.data }
             await redisClient.set(redisKey, JSON.stringify(results), {
-                EX: 15 * 60,
+                EX: 60 * 60 * 24,
             })
         }
 
         res.send({ data: results })
     } catch (error) {
         console.error('Error fetching CoinGecko global data:', error)
+        res.status(500).json({
+            error: 'Internal Server Error',
+            message: error.message,
+        })
+    }
+})
+
+app.get('/exchanges', async (req: Request, res: Response) => {
+    try {
+        const redisKey = 'cg_exchanges_data'
+        let results
+
+        const cachedResults = await redisClient.get(redisKey)
+        if (cachedResults) {
+            results = JSON.parse(cachedResults)
+        } else {
+            const response = await fetch(
+                `https://pro-api.coingecko.com/api/v3/exchanges?x_cg_pro_api_key=${process.env.CG_KEY}`
+            ).then((res) => res.json())
+
+            results = response
+            await redisClient.set(redisKey, JSON.stringify(results), {
+                EX: 60 * 60 * 24,
+            })
+        }
+
+        res.send({ data: results })
+    } catch (error) {
+        console.error('Error fetching CoinGecko exchanges data:', error)
         res.status(500).json({
             error: 'Internal Server Error',
             message: error.message,
@@ -103,7 +132,7 @@ app.get('/cgchart/:geckoId', async (req: Request, res: Response) => {
 
                 if (results && results.prices) {
                     await redisClient.set(storageKey, JSON.stringify(results), {
-                        EX: 14400,
+                        EX: 60 * 60 * 24,
                     })
                 }
             } catch (e) {
@@ -155,7 +184,7 @@ app.get('/protocol/:protocol', async (req: Request, res: Response) => {
         } else {
             results = (await getProtocolData(protocol))?.props
             await redisClient.set(redisKey, JSON.stringify(results), {
-                EX: 14400,
+                EX: 60 * 60 * 24,
             })
         }
 
@@ -193,7 +222,7 @@ async function updateChartCache(geckoId: string) {
         const results = await fetchChartData(geckoId, 0, fullChart)
         if (results && results.prices) {
             await redisClient.set(storageKey, JSON.stringify(results), {
-                EX: 14400,
+                EX: 60 * 60 * 24,
             })
         }
     } catch (error) {}
@@ -213,7 +242,7 @@ async function updateTop100TokensChartCache() {
     }
 }
 
-cron.schedule('0 */4 * * *', updateTop100TokensChartCache)
+cron.schedule('0 0 * * *', updateTop100TokensChartCache)
 
 app.listen('3000', () => {
     console.log('Running')
