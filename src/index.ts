@@ -222,10 +222,15 @@ async function updateChartCache(geckoId: string) {
         const results = await fetchChartData(geckoId, 0, fullChart)
         if (results && results.prices) {
             await redisClient.set(storageKey, JSON.stringify(results), {
-                EX: 60 * 60 * 24,
+                EX: 60 * 60 * 25,
             })
+            console.log(`Updated chart cache for ${geckoId}`)
+        } else {
+            console.warn(`No data received for ${geckoId}`)
         }
-    } catch (error) {}
+    } catch (error) {
+        console.error(`Error updating chart cache for ${geckoId}:`, error)
+    }
 }
 
 async function updateTop100TokensChartCache() {
@@ -234,17 +239,20 @@ async function updateTop100TokensChartCache() {
         if (tokens) {
             for (const token of tokens) {
                 await updateChartCache(token.id)
-                await sleep(3000)
+                await sleep(5000)
             }
+            console.log('Finished updating top 100 tokens chart cache')
+        } else {
+            console.warn('Failed to fetch top 100 tokens')
         }
     } catch (error) {
         console.error('Error updating top 100 tokens chart cache:', error)
     }
 }
 
-cron.schedule('0 0 * * *', updateTop100TokensChartCache)
+cron.schedule('0 */12 * * *', updateTop100TokensChartCache)
 
 app.listen('3000', () => {
-    console.log('Running')
-    updateTop100TokensChartCache()
+    console.log('Server running on port 3000')
+    setTimeout(updateTop100TokensChartCache, 60000)
 })
