@@ -8,7 +8,7 @@
 	"scripts": {
 		"build": "yarn rmv && tsc -p ./tsconfig.json && tsc-alias",
 		"dev": "yarn rmv && tsc && (concurrently   \"tsc --watch -p tsconfig.json\")",
-		"start-dev": "nodemon --watch ./src/index.ts  --exec \"rm -rf ./dist && yarn rmv && yarn build && node ./dist/src/index.js\"",
+		"start-dev": "export $(cat .env | xargs) && nodemon --watch ./src/index.ts  --exec \"rm -rf ./dist && yarn rmv && yarn build && node ./dist/src/index.js\"",
 		"start": "rm -rf ./dist && yarn rmv && yarn build && node ./dist/src/index.js",
 		"update-submodules": "git submodule update --init --recursive --remote --merge",
 		"rmv": "rm -rf ./frontend/src/components/Cexs ./frontend/src/pages/cex/ && cat ./cexs.ts > ./frontend/src/pages/cexs/index.tsx"
@@ -20,6 +20,7 @@
 		"@types/express": "4",
 		"@types/node-cron": "^3.0.11",
 		"ariakit": "^2.0.0-next.43",
+		"cacache": "^18.0.4",
 		"colord": "^2.9.3",
 		"concurrently": "^8.0.1",
 		"cors": "^2.8.5",

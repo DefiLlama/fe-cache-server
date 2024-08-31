@@ -1,11 +1,14 @@
 import express, { Express, Request, Response } from 'express'
 import dayjs from 'dayjs'
 import cron from 'node-cron'
+import cacache from 'cacache'
+import path from 'path'
+import fs from 'fs'
+import os from 'os'
 
 import { fetchChain } from '../frontend/src/components/ComparePage/chainFetcher'
 import 'module-alias/register'
 import fetch from 'node-fetch'
-import * as redis from 'redis'
 import cors from 'cors'
 import { getProtocolData } from '../frontend/src/api/categories/protocols/getProtocolData'
 import { chartExist, sleep, sluggify } from './utils'
@@ -13,76 +16,75 @@ import { fetchChartData } from './fetchChart'
 
 global.fetch = fetch
 
-let redisClient
-;(async () => {
-    redisClient = redis.createClient({ url: process.env.REDIS_DB })
-
-    redisClient.on('error', (error) => console.error(`Error : ${error}`))
-
-    await redisClient.connect()
-})()
-
 const app: Express = express()
+
+const cacheDir = path.join(os.tmpdir(), 'myapp-cache')
+const cacheTTL = 60 * 60 * 24
+
+if (!fs.existsSync(cacheDir)) {
+    fs.mkdirSync(cacheDir, { recursive: true })
+}
 
 app.use(cors())
 
+async function getCachedData(
+    key: string,
+    ttl: number = cacheTTL,
+    fetchFunc: () => Promise<any>
+): Promise<any> {
+    try {
+        const cached = await cacache.get.info(cacheDir, key)
+        if (cached && (Date.now() - cached.time) / 1000 < ttl) {
+            console.log(`Cache hit for key: ${key}`)
+            const { data } = await cacache.get(cacheDir, key)
+            return JSON.parse(data.toString())
+        }
+    } catch (error) {}
+
+    const data = await fetchFunc()
+    await cacache.put(cacheDir, key, JSON.stringify(data))
+    return data
+}
+
 app.get('/cg_market_data', async (req: Request, res: Response) => {
     try {
-        const redisKey = 'cg_crypto_market_data'
-        let results
-
-        const cachedResults = await redisClient.get(redisKey)
-        if (cachedResults) {
-            results = JSON.parse(cachedResults)
-        } else {
-            const response = await fetch(
-                `https://pro-api.coingecko.com/api/v3/global?x_cg_pro_api_key=${process.env.CG_KEY}`
-            ).then((res) => res.json())
-            const defiResponse = await fetch(
-                `https://pro-api.coingecko.com/api/v3/global/decentralized_finance_defi?x_cg_pro_api_key=${process.env.CG_KEY}`
-            ).then((res) => res.json())
-
-            results = { ...response.data, ...defiResponse.data }
-            await redisClient.set(redisKey, JSON.stringify(results), {
-                EX: 60 * 60 * 24,
-            })
-        }
-
+        const results = await getCachedData(
+            'cg_crypto_market_data',
+            60 * 60,
+            async () => {
+                const response = await fetch(
+                    `https://pro-api.coingecko.com/api/v3/global?x_cg_pro_api_key=${process.env.CG_KEY}`
+                ).then((res) => res.json())
+                const defiResponse = await fetch(
+                    `https://pro-api.coingecko.com/api/v3/global/decentralized_finance_defi?x_cg_pro_api_key=${process.env.CG_KEY}`
+                ).then((res) => res.json())
+                return { ...response.data, ...defiResponse.data }
+            }
+        )
         res.send({ data: results })
     } catch (error) {
-        console.error('Error fetching CoinGecko global data:', error)
         res.status(500).json({
-            error: 'Internal Server Error',
-            message: error.message,
+            error: 'Failed to fetch CoinGecko global data.',
         })
     }
 })
 
 app.get('/exchanges', async (req: Request, res: Response) => {
     try {
-        const redisKey = 'cg_exchanges_data'
-        let results
-
-        const cachedResults = await redisClient.get(redisKey)
-        if (cachedResults) {
-            results = JSON.parse(cachedResults)
-        } else {
-            const response = await fetch(
-                `https://pro-api.coingecko.com/api/v3/exchanges?x_cg_pro_api_key=${process.env.CG_KEY}`
-            ).then((res) => res.json())
-
-            results = response
-            await redisClient.set(redisKey, JSON.stringify(results), {
-                EX: 60 * 60 * 24,
-            })
-        }
-
+        const results = await getCachedData(
+            'cg_exchanges_data',
+            60 * 60,
+            async () => {
+                const response = await fetch(
+                    `https://pro-api.coingecko.com/api/v3/exchanges?x_cg_pro_api_key=${process.env.CG_KEY}`
+                ).then((res) => res.json())
+                return response
+            }
+        )
         res.send({ data: results })
     } catch (error) {
-        console.error('Error fetching CoinGecko exchanges data:', error)
         res.status(500).json({
-            error: 'Internal Server Error',
-            message: error.message,
+            error: 'Failed to fetch CoinGecko exchanges data.',
         })
     }
 })
@@ -90,21 +92,16 @@ app.get('/exchanges', async (req: Request, res: Response) => {
 app.get('/:chain', async (req: Request, res: Response) => {
     try {
         const chain = req.params.chain
-        const redisChain = chain + '_redis'
-        let results
-
-        const cacheResults = await redisClient.get(redisChain)
-        if (cacheResults) {
-            results = JSON.parse(cacheResults)
-        } else {
-            results = await fetchChain({ chain })
-            await redisClient.setEx(redisChain, 14400, JSON.stringify(results))
-        }
-        res.send({
-            data: results,
-        })
-    } catch (e) {
-        res.status(500).send({ error: 'Internal Server Error' })
+        const results = await getCachedData(
+            `chain_${chain}`,
+            60 * 60 * 24,
+            async () => {
+                return await fetchChain({ chain })
+            }
+        )
+        res.send({ data: results })
+    } catch (error) {
+        res.status(500).send({ error: 'Failed to fetch chain data.' })
     }
 })
 
@@ -112,81 +109,62 @@ app.get('/cgchart/:geckoId', async (req: Request, res: Response) => {
     try {
         const geckoId = req.params.geckoId
         const fullChart = req.query.fullChart === 'true'
-        const storageKey = 'cgchart_' + geckoId + (fullChart ? '_full' : '')
-
+        const cacheKey = `cgchart_${geckoId}${fullChart ? '_full' : ''}`
         const unixTimestampStartOfOneYearAgo = dayjs()
             .subtract(1, 'year')
             .startOf('day')
             .unix()
 
-        let cachedResults = await redisClient.get(storageKey)
-        let results = cachedResults ? JSON.parse(cachedResults) : null
-
-        if (!results || !results.prices) {
-            try {
-                results = await fetchChartData(
-                    geckoId,
-                    unixTimestampStartOfOneYearAgo,
-                    fullChart
-                )
-
-                if (results && results.prices) {
-                    await redisClient.set(storageKey, JSON.stringify(results), {
-                        EX: 60 * 60 * 24,
-                    })
-                }
-            } catch (e) {
-                res.send({ error: e?.message })
-
-                return
-            }
-        }
-
+        const results = await getCachedData(cacheKey, 60 * 60, async () => {
+            return await fetchChartData(
+                geckoId,
+                unixTimestampStartOfOneYearAgo,
+                fullChart
+            )
+        })
         res.send({ data: results || {} })
-    } catch (e) {
-        res.status(500).send({ error: 'Internal Server Error' })
+    } catch (error) {
+        console.error(
+            `Error fetching/caching cgchart data for ${req.params.geckoId}:`,
+            error
+        )
+        res.status(500).send({ error: 'Failed to fetch chart data.' })
     }
 })
 
 app.get('/supply/:geckoId', async (req: Request, res: Response) => {
     try {
         const geckoId = req.params.geckoId
-        const redisId = 'supply_' + geckoId
-        let results
-
-        const cacheResults = await redisClient.get(redisId)
-        if (cacheResults) {
-            results = JSON.parse(cacheResults)
-        } else {
-            const data = await fetch(
-                `https://pro-api.coingecko.com/api/v3/coins/${geckoId}?localization=false&tickers=false&market_data=true&community_data=false&developer_data=false&sparkline=false&x_cg_pro_api_key=${process.env.CG_KEY}`
-            ).then((res) => res.json())
-            results = { total_supply: data['market_data']['total_supply'] }
-            await redisClient.setEx(redisId, 14400, JSON.stringify(results))
-        }
-        res.send({
-            data: results,
-        })
-    } catch (e) {
-        res.status(500).send({ error: 'Internal Server Error' })
+        const results = await getCachedData(
+            `supply_${geckoId}`,
+            14400,
+            async () => {
+                const data = await fetch(
+                    `https://pro-api.coingecko.com/api/v3/coins/${geckoId}?localization=false&tickers=false&market_data=true&community_data=false&developer_data=false&sparkline=false&x_cg_pro_api_key=${process.env.CG_KEY}`
+                ).then((res) => res.json())
+                return { total_supply: data['market_data']['total_supply'] }
+            }
+        )
+        res.send({ data: results })
+    } catch (error) {
+        console.error(
+            `Error fetching/caching supply data for ${req.params.geckoId}:`,
+            error
+        )
+        res.status(500).send({ error: 'Failed to fetch supply data.' })
     }
 })
 
 app.get('/protocol/:protocol', async (req: Request, res: Response) => {
     try {
         const protocol = sluggify(req.params.protocol)
-        const redisKey = 'protocol_data_' + protocol.toLowerCase()
-        let results
-
-        const cacheResults = await redisClient.get(redisKey)
-        if (cacheResults) {
-            results = JSON.parse(cacheResults)
-        } else {
-            results = (await getProtocolData(protocol))?.props
-            await redisClient.set(redisKey, JSON.stringify(results), {
-                EX: 60 * 60 * 24,
-            })
-        }
+        const results = await getCachedData(
+            `protocol_${protocol}`,
+            60 * 60 * 24,
+            async () => {
+                return (await getProtocolData(protocol))?.props
+            }
+        )
 
         const availableCharts = Object.fromEntries(
             Object.entries(chartExist).map(([key, func]) => [
@@ -196,9 +174,12 @@ app.get('/protocol/:protocol', async (req: Request, res: Response) => {
         )
 
         res.send({ availableCharts, protocol: results })
-    } catch (e) {
-        console.log(e)
-        res.status(500).send({ error: 'Internal Server Error' })
+    } catch (error) {
+        console.error(
+            `Error fetching/caching protocol data for ${req.params.protocol}:`,
+            error
+        )
+        res.status(500).send({ error: 'Failed to fetch protocol data.' })
     }
 })
 
@@ -216,21 +197,14 @@ async function fetchTop100Tokens() {
 
 async function updateChartCache(geckoId: string) {
     const fullChart = true
-    const storageKey = 'cgchart_' + geckoId + '_full'
+    const cacheKey = `cgchart_${geckoId}_full`
 
     try {
         const results = await fetchChartData(geckoId, 0, fullChart)
         if (results && results.prices) {
-            await redisClient.set(storageKey, JSON.stringify(results), {
-                EX: 60 * 60 * 25,
-            })
-            console.log(`Updated chart cache for ${geckoId}`)
-        } else {
-            console.warn(`No data received for ${geckoId}`)
+            await cacache.put(cacheDir, cacheKey, JSON.stringify(results))
         }
-    } catch (error) {
-        console.error(`Error updating chart cache for ${geckoId}:`, error)
-    }
+    } catch (error) {}
 }
 
 async function updateTop100TokensChartCache() {
@@ -241,18 +215,16 @@ async function updateTop100TokensChartCache() {
                 await updateChartCache(token.id)
                 await sleep(5000)
             }
-            console.log('Finished updating top 100 tokens chart cache')
         } else {
-            console.warn('Failed to fetch top 100 tokens')
         }
-    } catch (error) {
-        console.error('Error updating top 100 tokens chart cache:', error)
-    }
+    } catch (error) {}
 }
 
-cron.schedule('0 */12 * * *', updateTop100TokensChartCache)
+cron.schedule('0 */4 * * *', updateTop100TokensChartCache)
 
-app.listen('3000', () => {
-    console.log('Server running on port 3000')
+const port = process.env.PORT || 3000
+app.listen(port, () => {
+    console.log(`Server running on port ${port}`)
+
     setTimeout(updateTop100TokensChartCache, 60000)
 })
