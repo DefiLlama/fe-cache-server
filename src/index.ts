@@ -142,7 +142,7 @@ app.get('/supply/:geckoId', async (req: Request, res: Response) => {
                 const data = await fetch(
                     `https://pro-api.coingecko.com/api/v3/coins/${geckoId}?localization=false&tickers=false&market_data=true&community_data=false&developer_data=false&sparkline=false&x_cg_pro_api_key=${process.env.CG_KEY}`
                 ).then((res) => res.json())
-                return { total_supply: data['market_data']['total_supply'] }
+                return { total_supply: data?.['market_data']?.['total_supply'] ?? null }
             }
         )
         res.send({ data: results })
