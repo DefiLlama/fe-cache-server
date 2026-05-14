@@ -89,9 +89,14 @@ app.get('/exchanges', async (req: Request, res: Response) => {
     }
 })
 
+const VALID_CHAIN_REGEX = /^[A-Za-z0-9 _-]{1,40}$/
+
 app.get('/:chain', async (req: Request, res: Response) => {
+    const chain = req.params.chain
+    if (!VALID_CHAIN_REGEX.test(chain)) {
+        return res.status(404).send({ error: 'Invalid chain.' })
+    }
     try {
-        const chain = req.params.chain
         const results = await getCachedData(
             `chain_${chain}`,
             60 * 60 * 24,
@@ -220,7 +225,24 @@ async function updateTop100TokensChartCache() {
     } catch (error) {}
 }
 
+async function cleanupCache() {
+    try {
+        const now = Date.now()
+        const maxAgeMs = 60 * 60 * 24 * 7 * 1000
+        const entries = await cacache.ls(cacheDir)
+        for (const key of Object.keys(entries)) {
+            if (now - entries[key].time > maxAgeMs) {
+                await cacache.rm.entry(cacheDir, key)
+            }
+        }
+        await cacache.verify(cacheDir)
+    } catch (error) {
+        console.error('Error during cache cleanup:', error)
+    }
+}
+
 cron.schedule('0 */4 * * *', updateTop100TokensChartCache)
+cron.schedule('0 3 * * *', cleanupCache)
 
 const port = process.env.PORT || 3000
 app.listen(port, () => {
