@@ -19,6 +19,11 @@ global.fetch = fetch
 
 const app: Express = express()
 
+// The service sits behind one reverse proxy, so req.ip comes from the last
+// X-Forwarded-For hop. Without this every caller shares the proxy's address
+// and therefore a single rate-limit bucket.
+app.set('trust proxy', 1)
+
 // Rate limit: 60 requests/minute per IP for geckoId endpoints
 // skipFailedRequests: true so 4xx/5xx responses don't count against quota
 // CoinGecko counts ALL responses (including 4xx/5xx) toward rate limit
