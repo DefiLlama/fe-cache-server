@@ -1,19 +1,21 @@
 const LLAMA_API = 'https://coins.llama.fi/chart'
 const CG_API = 'https://pro-api.coingecko.com/api/v3/coins'
 
-async function fetchChartData(geckoId, unixTimestamp, fullChart = false) {
-    const llamaUrl = `${LLAMA_API}/coingecko:${geckoId}?start=${unixTimestamp}&span=${
-        fullChart ? '1000' : '365'
-    }`
-    const geckoUrl = `${CG_API}/${geckoId}/market_chart?vs_currency=usd&days=${
-        fullChart ? 'max' : '365'
-    }&x_cg_pro_api_key=${process.env.CG_KEY}`
+async function fetchJsonOk(url: string): Promise<any> {
+    const response = await fetch(url)
+    if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`)
+    }
+    return response.json()
+}
+
+async function fetchChartData(geckoId: string, unixTimestamp: number, fullChart = false) {
+    const llamaUrl = `${LLAMA_API}/coingecko:${geckoId}?start=${unixTimestamp}&span=${fullChart ? '1000' : '365'}`
+    const geckoUrl = `${CG_API}/${geckoId}/market_chart?vs_currency=usd&days=${fullChart ? 'max' : '365'}&x_cg_pro_api_key=${process.env.CG_KEY}`
 
     let [cgResponse, cgCoinData] = await Promise.all([
-        fetch(geckoUrl).then((r) => r.json()),
-        fetch(
-            `${CG_API}/${geckoId}?x_cg_pro_api_key=${process.env.CG_KEY}`
-        ).then((r) => r.json()),
+        fetchJsonOk(geckoUrl).catch(() => null),
+        fetchJsonOk(`${CG_API}/${geckoId}?x_cg_pro_api_key=${process.env.CG_KEY}`).catch(() => null),
     ])
 
     let chart = cgResponse?.prices
@@ -22,7 +24,7 @@ async function fetchChartData(geckoId, unixTimestamp, fullChart = false) {
     let llamaResponse
 
     if (!chart) {
-        llamaResponse = await fetch(llamaUrl).then((r) => r.json())
+        llamaResponse = await fetchJsonOk(llamaUrl)
         chart = llamaResponse?.coins?.[`coingecko:${geckoId}`]?.prices?.map(
             (price) => [price.timestamp * 1000, price.price]
         )
