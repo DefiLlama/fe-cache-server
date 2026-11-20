@@ -21,11 +21,11 @@ export const chartExist = {
     tokenVolume: ({ protocolData }) => !!protocolData.gecko_id,
     tokenLiquidity: ({ protocolData }) => !!protocolData.gecko_id,
     twitter: ({ protocolData }) => !!protocolData?.twitter,
-    devMetrics: ({ protocolData }) => protocolData?.metricsdevMetrics,
-    contributersMetrics: ({ protocolData }) => protocolData?.metricsdevMetrics,
-    contributersCommits: ({ protocolData }) => protocolData?.metricsdevMetrics,
-    devCommits: ({ protocolData }) => protocolData?.metricsdevMetrics,
-    nftVolume: ({ protocolData }) => protocolData?.metricsnftVolume,
+    devMetrics: ({ protocolData }) => protocolData?.metrics?.devMetrics,
+    contributersMetrics: ({ protocolData }) => protocolData?.metrics?.devMetrics,
+    contributersCommits: ({ protocolData }) => protocolData?.metrics?.devMetrics,
+    devCommits: ({ protocolData }) => protocolData?.metrics?.devMetrics,
+    nftVolume: ({ protocolData }) => protocolData?.metrics?.nftVolume,
     staking: ({ protocolData }) =>
         !!protocolData?.historicalChainTvls['staking']?.tvl?.length,
     borrowed: ({ protocolData }) =>
